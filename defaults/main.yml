@@ -1,0 +1,6 @@
+---
+# defaults file for network-monitoring-role
+docker_download: "https://get.docker.com"
+docker_tmp: "/tmp"
+docker_script: "get-docker.sh"
+docker_release: "stable"

@@ -1,0 +1,117 @@
+version: '3.7'
+
+volumes:
+    prometheus_data: {}
+    grafana_data: {}
+
+networks:
+  front-tier:
+  back-tier:
+
+services:
+
+  prometheus:
+    image: prom/prometheus:v2.25.2
+    volumes:
+      - "{{ monitoring_dirs.prometheus }}:{{ monitoring_dirs.prometheus }}"
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file={{ monitoring_dirs.prometheus }}/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - 9090:9090
+    networks:
+      - back-tier
+    links:
+      - node-exporter:node-exporter
+      - blackbox-exporter:blackbox-exporter
+      - speedtest:speedtest
+
+  speedtest:
+    expose:
+      - 9798
+    ports:
+      - 9798:9798
+    image: miguelndecarvalho/speedtest-exporter
+    networks:
+      - back-tier
+
+  node-exporter:
+    image: prom/node-exporter
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command: 
+      - '--path.procfs=/host/proc' 
+      - '--path.sysfs=/host/sys'
+      - --collector.filesystem.ignored-mount-points
+      - "^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"
+    ports:
+      - 9100:9100
+    networks:
+      - back-tier
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter
+    volumes:
+      - "{{ blackbox.path }}:/config"
+    command:
+      - '--config.file=/config/{{ blackbox.config }}'
+    ports:
+      - "{{ blackbox.port }}:{{blackbox.port }}"
+    expose:
+      - 9115
+    networks:
+      - back-tier
+
+  grafana:
+    image: grafana/grafana
+    user: "472"
+    depends_on:
+      - prometheus
+    ports:
+      - 3000:3000
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - /etc/grafana/provisioning/:/etc/grafana/provisioning/
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    networks:
+      - back-tier
+      - front-tier
+
+  pihole:
+    container_name: pihole
+    image: pihole/pihole:2022.01
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "67:67/udp"
+      - "80:80/tcp"
+    environment:
+      TZ: 'Europe/Sofia'
+      #WEBPASSWORD: ''
+    # Volumes store your data between container upgrades
+    volumes:
+      - './etc-pihole/:/etc/pihole/'
+      - './etc-dnsmasq.d/:/etc/dnsmasq.d/'
+    networks:
+      - front-tier
+    cap_add:
+      - NET_ADMIN
+
+  pihole-exporter:
+    image: ekofr/pihole-exporter:v0.1.1
+    ports:
+      - 9617:9617
+    environment:
+      PIHOLE_PROTOCOL: "http"
+      PIHOLE_HOSTNAME: "pihole"
+      INTERVAL: "30s"
+    networks:
+      - front-tier
+      - back-tier

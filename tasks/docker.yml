@@ -1,0 +1,59 @@
+---
+
+- name: Print all available facts
+  ansible.builtin.debug:
+    var: ansible_facts
+
+- name: Check if docker is installed
+  command: which docker
+  register: docker_installed
+  changed_when: false
+  failed_when: false
+
+- name: Download docker script
+  get_url:
+    url: "{{ docker_download }}"
+    dest: "{{ docker_tmp }}/{{ docker_script }}"
+    mode: 0775
+  when: docker_installed.rc == 1
+
+- name: Install Dependancies on Ubuntu family
+  package:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ docker.pkgs }}"
+  when: ansible_facts['os_family'] == "Debian"
+
+
+- name: Run Docker instalation script
+  command: "{{ docker_tmp }}/{{ docker_script }}"
+  environment: 
+    CHANNEL: "{{ docker_release }}"
+  become: yes
+  register: docker_script_output
+  when: docker_installed.rc == 1
+
+- name: Make sure the Docker service is running
+  service:
+    name: docker
+    state: started
+    enabled: yes
+  when: docker_installed.rc == 1
+
+- name: Ensure docker group exists
+  group:
+    name: docker
+    state: present
+    gid: 1690
+  when: docker_installed.rc == 1
+
+- name: Add {{ ansible_user }} use is in docker group
+  user:
+    name:  "{{ ansible_user }}"
+    groups: docker
+    append: true
+  when: docker_installed.rc == 1
+
+    #- name: Reset connection  to allow changes to be picked up
+    #  meta: reset_connection
+    #

@@ -1,0 +1,44 @@
+---
+- name: Setup Docker Compose file
+  template:
+    src: templates/docker-compose.yml
+    dest: "/home/pi"
+    mode: "0755"
+
+- name: Create directories for monitoring configs
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop: "{{ monitoring_dirs.values() }}"
+
+- name: Setup BlackBox exporter config
+  template:
+    src: templates/blackbox-config.yml
+    dest: "{{ blackbox.path }}/{{ blackbox.config }}"
+    mode: '0644'
+
+- name: Setup Grafana datasource
+  template:
+    src: templates/grafana-datasource.yml
+    dest: "/etc/grafana/provisioning/datasources/datasource.yml"
+    mode: '0644'
+
+- name: Setup Grafana Dashboard 
+  template:
+    src: templates/grafana-dashboard.yml
+    dest: "/etc/grafana/provisioning/dashboards/dashboard.yml"
+    mode: "0644"
+
+      #- name: Setup Grafana Dashboard JSON
+      #  template:
+      #    src: templates/grafana-dashboard-test.json
+      #    dest: "/etc/grafana/provisioning/dashboards/monitoring.json"
+      #    mode: "0644"
+
+- name: Setup Prometheus config
+  template:
+    src: templates/prometheus.yml
+    dest: "/etc/prometheus"
+    mode: "0644"
+

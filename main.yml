@@ -1,0 +1,12 @@
+# tasks file for network-monitoring-role
+- hosts: internet_pi
+  become: true
+  tasks:
+    - name: Setup Docker
+      include: tasks/docker.yml
+    - name: Setup config files for components
+      include: tasks/configfiles.yml
+      tags: "configfiles"
+    - name: Setup Docker Compose
+      include: tasks/docker-compose.yml
+      tags: "docker-compose"

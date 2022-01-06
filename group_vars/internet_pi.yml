@@ -1,0 +1,36 @@
+---
+grafana_base_dir: "/etc/grafana/provisioning"
+monitoring_dirs:
+  grafana_datasources: "{{ grafana_base_dir }}/datasources"
+  grafana_dashboards: "{{ grafana_base_dir }}/dashboards"
+  blackbox: "{{ blackbox.path }}"
+  prometheus: "/etc/prometheus"
+
+docker_download: "https://get.docker.com"
+docker_tmp: "/tmp"
+docker_script: "get-docker.sh"
+docker_release: "stable"
+
+docker:
+  pkgs:
+    - ca-certificates
+    - curl
+    - gnupg
+    - lsb-release
+    - jq
+    - python3-pip
+
+docker_compose:
+  version: "v2.1.1"
+
+blackbox:
+  path: "/etc/blackbox-exporter"
+  version: "0.19.0"
+  config: "blackbox.yml"
+  port: "9115"
+  restat: "aways"
+  targets:
+    - https://prometheus.io
+    - http://prometheus.io
+    - https://google.com
+    - https://fast.com
